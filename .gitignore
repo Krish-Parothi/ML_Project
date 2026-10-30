@@ -4,10 +4,13 @@ __pycache__/
 *$py.class
 *.ipynb_checkpoints/
 
-# Virtual Environments
+# Virtual Environments & Dependencies
 venv/
 .venv/
 env/
+node_modules/
+ui/node_modules/
+ui/dist/
 
 # Large Model Files exceeding GitHub's 100 MB limit
 saved_models/random_forest.pkl
