@@ -2,16 +2,15 @@ import React, { useState, useEffect, useTransition } from 'react';
 import './App.css';
 import brainImg from './assets/brain.jpg';
 import { 
-  Plane, Sparkles, User, ShieldCheck, Activity, AlertTriangle, 
-  CheckCircle2, Wifi, Star, Clock, Compass, ThumbsUp, ThumbsDown, RefreshCw
+  Plane, Sparkles, User, ShieldCheck, Activity, 
+  Wifi, Star, Clock, Compass, ThumbsUp, ThumbsDown, RefreshCw, Luggage, Armchair
 } from 'lucide-react';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
+// Streamlined: Only High-Impact Predictive Features Kept!
 const INITIAL_PASSENGER = {
-  gender: 'Female',
   customer_type: 'Returning',
-  age: 42,
   type_of_travel: 'Business',
   travel_class: 'Business',
   flight_distance: 1850,
@@ -22,15 +21,9 @@ const INITIAL_PASSENGER = {
   seat_comfort: 5,
   legroom_service: 5,
   cleanliness: 5,
-  food_and_drink: 4,
-  inflight_service: 5,
   inflight_entertainment: 5,
   baggage_handling: 5,
-  onboard_service: 5,
   checkin_service: 5,
-  gate_location: 4,
-  ease_of_booking: 5,
-  time_convenience: 4,
   model_name: 'LightGBM'
 };
 
@@ -85,13 +78,13 @@ export default function App() {
     const isBiz = p.travel_class === 'Business';
     const delays = p.departure_delay + p.arrival_delay;
     const avgRating = (
-      p.online_boarding * 2.5 +
-      p.inflight_wifi * 2.5 +
-      p.seat_comfort +
+      p.online_boarding * 3.0 +
+      p.inflight_wifi * 3.0 +
+      p.seat_comfort * 1.5 +
       p.cleanliness +
       p.inflight_entertainment +
-      p.legroom_service
-    ) / 9;
+      p.legroom_service * 1.5
+    ) / 11;
 
     let score = avgRating * 18 + (isBiz ? 15 : -10) - (delays > 45 ? 18 : 0);
     const isSat = score >= 50;
@@ -140,7 +133,6 @@ export default function App() {
     if (type === 'satisfied_vip') {
       setPassenger({
         ...INITIAL_PASSENGER,
-        gender: 'Female',
         travel_class: 'Business',
         type_of_travel: 'Business',
         online_boarding: 5,
@@ -154,9 +146,7 @@ export default function App() {
     } else if (type === 'dissatisfied_economy') {
       setPassenger({
         ...INITIAL_PASSENGER,
-        gender: 'Male',
         customer_type: 'First-time',
-        age: 26,
         travel_class: 'Economy',
         type_of_travel: 'Personal',
         flight_distance: 650,
@@ -167,18 +157,14 @@ export default function App() {
         seat_comfort: 2,
         legroom_service: 1,
         cleanliness: 2,
-        food_and_drink: 1,
-        inflight_service: 2,
         inflight_entertainment: 1,
         baggage_handling: 2
       });
     } else if (type === 'borderline') {
       setPassenger({
         ...INITIAL_PASSENGER,
-        gender: 'Male',
         customer_type: 'Returning',
-        age: 35,
-        travel_class: 'Economy Plus',
+        travel_class: 'Economy',
         type_of_travel: 'Business',
         flight_distance: 1200,
         departure_delay: 20,
@@ -188,8 +174,6 @@ export default function App() {
         seat_comfort: 3,
         legroom_service: 3,
         cleanliness: 3,
-        food_and_drink: 3,
-        inflight_service: 3,
         inflight_entertainment: 3,
         baggage_handling: 3
       });
@@ -208,13 +192,13 @@ export default function App() {
             <div className="brand-title">
               NEURALFLIGHT <span style={{ fontSize: '13px', color: 'var(--neon-cyan)', fontWeight: 600 }}>AI</span>
             </div>
-            <div className="brand-subtitle">Passenger Satisfaction Classifier (Feature-Based Verdicts)</div>
+            <div className="brand-subtitle">Streamlined Core Feature Model (Noisy Features Removed)</div>
           </div>
         </div>
 
         <div className="header-status-badge">
           <span className="status-dot" style={{ backgroundColor: backendOnline ? '#10b981' : '#f59e0b' }} />
-          {backendOnline ? 'FastAPI Backend Online (Port 8000)' : 'Local Classifier Active'}
+          {backendOnline ? 'FastAPI Backend Online' : 'Local Classifier Active'}
         </div>
       </header>
 
@@ -222,7 +206,7 @@ export default function App() {
       <div className="controls-bar">
         <div className="presets-container">
           <span className="presets-label">
-            <Sparkles size={14} /> Quick Test Points:
+            <Sparkles size={14} /> Presets:
           </span>
           <button className="preset-btn" onClick={() => applyPreset('satisfied_vip')}>
             🚀 VIP Business (Satisfied)
@@ -231,7 +215,7 @@ export default function App() {
             ⚠️ Frustrated Economy (Dissatisfied)
           </button>
           <button className="preset-btn" onClick={() => applyPreset('borderline')}>
-            ⚖️ Economy Plus (Borderline)
+            ⚖️ Economy Casual (Borderline)
           </button>
           <button className="preset-btn" onClick={() => setPassenger(INITIAL_PASSENGER)}>
             <RefreshCw size={12} /> Reset
@@ -239,7 +223,7 @@ export default function App() {
         </div>
 
         <div className="model-selector-container">
-          <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase' }}>Active Model:</span>
+          <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase' }}>Model:</span>
           {['LightGBM', 'XGBoost', 'Random Forest'].map(modelName => (
             <button
               key={modelName}
@@ -254,26 +238,38 @@ export default function App() {
 
       {/* ─── Main Content Grid ─── */}
       <div className="main-grid">
-        {/* Left: Input Form Panels */}
+        {/* Left: Clean High-Impact Input Form */}
         <div className="form-column">
-          {/* Card 1: Passenger Profile & Flight Info */}
+          {/* Card 1: Core Flight & Passenger Factors */}
           <div className="card">
             <div className="card-header">
-              <User className="card-icon" size={18} />
-              <div className="card-title">Passenger Demographics & Flight Details</div>
-              <div className="card-subtitle">Flight Parameters</div>
+              <Plane className="card-icon" size={18} />
+              <div className="card-title">Flight & Passenger Profile (High Impact)</div>
+              <div className="card-subtitle">Major Predictors</div>
             </div>
 
             <div className="fields-grid-3" style={{ marginBottom: '16px' }}>
               <div className="input-group">
-                <label className="input-label">Gender</label>
+                <label className="input-label">Cabin Class</label>
                 <select 
                   className="select-input"
-                  value={passenger.gender}
-                  onChange={e => handleFieldChange('gender', e.target.value)}
+                  value={passenger.travel_class}
+                  onChange={e => handleFieldChange('travel_class', e.target.value)}
                 >
-                  <option value="Female">Female</option>
-                  <option value="Male">Male</option>
+                  <option value="Business">Business Class</option>
+                  <option value="Economy">Economy</option>
+                </select>
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">Travel Purpose</label>
+                <select 
+                  className="select-input"
+                  value={passenger.type_of_travel}
+                  onChange={e => handleFieldChange('type_of_travel', e.target.value)}
+                >
+                  <option value="Business">Business Trip</option>
+                  <option value="Personal">Personal Trip</option>
                 </select>
               </div>
 
@@ -286,46 +282,6 @@ export default function App() {
                 >
                   <option value="Returning">Returning Member</option>
                   <option value="First-time">First-time Passenger</option>
-                </select>
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">
-                  <span>Age</span>
-                  <span className="input-value-badge">{passenger.age} yrs</span>
-                </label>
-                <input 
-                  type="range" min="7" max="85"
-                  className="slider-control"
-                  value={passenger.age}
-                  onChange={e => handleFieldChange('age', parseInt(e.target.value))}
-                />
-              </div>
-            </div>
-
-            <div className="fields-grid-2" style={{ marginBottom: '16px' }}>
-              <div className="input-group">
-                <label className="input-label">Travel Purpose</label>
-                <select 
-                  className="select-input"
-                  value={passenger.type_of_travel}
-                  onChange={e => handleFieldChange('type_of_travel', e.target.value)}
-                >
-                  <option value="Business">Business Travel</option>
-                  <option value="Personal">Personal Travel</option>
-                </select>
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">Cabin Class</label>
-                <select 
-                  className="select-input"
-                  value={passenger.travel_class}
-                  onChange={e => handleFieldChange('travel_class', e.target.value)}
-                >
-                  <option value="Business">Business Class</option>
-                  <option value="Economy">Economy</option>
-                  <option value="Economy Plus">Economy Plus</option>
                 </select>
               </div>
             </div>
@@ -376,54 +332,34 @@ export default function App() {
             </div>
           </div>
 
-          {/* Card 2: Digital & Airport Touchpoints */}
+          {/* Card 2: Top Decision-Making Services */}
           <div className="card">
             <div className="card-header">
               <Wifi className="card-icon" size={18} />
-              <div className="card-title">Digital & Airport Experience (Top Predictors)</div>
-              <div className="card-subtitle">Ranked #1 & #2 in importance</div>
+              <div className="card-title">Top Decision Drivers (Wifi & Boarding)</div>
+              <div className="card-subtitle">Accounts for 60%+ tree splits</div>
             </div>
 
             <div className="ratings-grid">
               <RatingSelector 
-                label="Online Boarding (#1 Driver)" 
-                value={passenger.online_boarding} 
-                onChange={v => handleFieldChange('online_boarding', v)} 
-              />
-              <RatingSelector 
-                label="In-flight Wifi (#2 Driver)" 
+                label="📶 In-flight Wifi Service (#1 Driver)" 
                 value={passenger.inflight_wifi} 
                 onChange={v => handleFieldChange('inflight_wifi', v)} 
               />
               <RatingSelector 
-                label="Check-in Service" 
-                value={passenger.checkin_service} 
-                onChange={v => handleFieldChange('checkin_service', v)} 
-              />
-              <RatingSelector 
-                label="Ease of Online Booking" 
-                value={passenger.ease_of_booking} 
-                onChange={v => handleFieldChange('ease_of_booking', v)} 
-              />
-              <RatingSelector 
-                label="Gate Location Convenience" 
-                value={passenger.gate_location} 
-                onChange={v => handleFieldChange('gate_location', v)} 
-              />
-              <RatingSelector 
-                label="Flight Time Convenience" 
-                value={passenger.time_convenience} 
-                onChange={v => handleFieldChange('time_convenience', v)} 
+                label="📱 Online Boarding (#2 Driver)" 
+                value={passenger.online_boarding} 
+                onChange={v => handleFieldChange('online_boarding', v)} 
               />
             </div>
           </div>
 
-          {/* Card 3: In-Flight Amenities & Comfort */}
+          {/* Card 3: Physical Cabin Comfort */}
           <div className="card">
             <div className="card-header">
-              <Plane className="card-icon" size={18} />
-              <div className="card-title">In-Cabin Comfort & Amenities</div>
-              <div className="card-subtitle">1 to 5 Stars</div>
+              <Armchair className="card-icon" size={18} />
+              <div className="card-title">Physical Comfort & On-Board Experience</div>
+              <div className="card-subtitle">High impact on long flights</div>
             </div>
 
             <div className="ratings-grid">
@@ -443,16 +379,6 @@ export default function App() {
                 onChange={v => handleFieldChange('cleanliness', v)} 
               />
               <RatingSelector 
-                label="Food & Drink" 
-                value={passenger.food_and_drink} 
-                onChange={v => handleFieldChange('food_and_drink', v)} 
-              />
-              <RatingSelector 
-                label="In-flight Service" 
-                value={passenger.inflight_service} 
-                onChange={v => handleFieldChange('inflight_service', v)} 
-              />
-              <RatingSelector 
                 label="In-flight Entertainment" 
                 value={passenger.inflight_entertainment} 
                 onChange={v => handleFieldChange('inflight_entertainment', v)} 
@@ -463,9 +389,9 @@ export default function App() {
                 onChange={v => handleFieldChange('baggage_handling', v)} 
               />
               <RatingSelector 
-                label="On-board Service" 
-                value={passenger.onboard_service} 
-                onChange={v => handleFieldChange('onboard_service', v)} 
+                label="Check-in Service" 
+                value={passenger.checkin_service} 
+                onChange={v => handleFieldChange('checkin_service', v)} 
               />
             </div>
           </div>
@@ -482,7 +408,7 @@ export default function App() {
                   <span>Direct Model Verdict</span>
                 </div>
 
-                <div className="verdict-status-title" style={{ fontSize: '32px', margin: '20px 0' }}>
+                <div className="verdict-status-title" style={{ fontSize: '30px', margin: '18px 0' }}>
                   {prediction.is_satisfied ? 'PASSENGER IS SATISFIED' : 'PASSENGER IS DISSATISFIED'}
                 </div>
 
