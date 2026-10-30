@@ -350,49 +350,57 @@ def predict_satisfaction(passenger: PassengerInput):
     is_satisfied = bool(pred_raw == 1)
     confidence = (prob_raw * 100.0) if is_satisfied else ((1.0 - prob_raw) * 100.0)
     
-    # 4. Run cross-comparison on all loaded models
+    # 4. Run cross-comparison on all loaded models (Only Clean Verdicts)
     comparison_results = {}
     for name, mdl in models.items():
         p = int(mdl.predict(df_features)[0])
-        prob = float(mdl.predict_proba(df_features)[0][1])
-        conf = (prob * 100.0) if p == 1 else ((1.0 - prob) * 100.0)
         comparison_results[name] = {
-            "prediction": "Satisfied" if p == 1 else "Neutral or Dissatisfied",
+            "prediction": "SATISFIED" if p == 1 else "DISSATISFIED",
             "is_satisfied": (p == 1),
-            "confidence_percent": round(conf, 2),
-            "probability_satisfied": round(prob * 100.0, 2),
-            "benchmark_accuracy": model_metadata.get(name, {}).get("accuracy", 95.0)
+            "benchmark_accuracy": f"{model_metadata.get(name, {}).get('accuracy', 95.0)}%"
         }
     
     # 5. Extract dominant driver insights
     top_drivers = []
     if passenger.online_boarding >= 4:
-        top_drivers.append({"factor": "Online Boarding", "sentiment": "positive", "detail": f"High boarding rating ({passenger.online_boarding}/5)"})
+        top_drivers.append({"factor": "Online Boarding", "sentiment": "positive", "detail": f"High rating ({passenger.online_boarding}/5)"})
     elif passenger.online_boarding <= 2:
-        top_drivers.append({"factor": "Online Boarding", "sentiment": "negative", "detail": f"Poor boarding experience ({passenger.online_boarding}/5)"})
+        top_drivers.append({"factor": "Online Boarding", "sentiment": "negative", "detail": f"Low rating ({passenger.online_boarding}/5)"})
 
     if passenger.inflight_wifi >= 4:
-        top_drivers.append({"factor": "In-flight Wifi", "sentiment": "positive", "detail": f"Fast & reliable connection ({passenger.inflight_wifi}/5)"})
+        top_drivers.append({"factor": "In-flight Wifi", "sentiment": "positive", "detail": f"Reliable connection ({passenger.inflight_wifi}/5)"})
     elif passenger.inflight_wifi <= 2:
-        top_drivers.append({"factor": "In-flight Wifi", "sentiment": "negative", "detail": f"Sub-standard wifi connectivity ({passenger.inflight_wifi}/5)"})
+        top_drivers.append({"factor": "In-flight Wifi", "sentiment": "negative", "detail": f"Poor wifi connection ({passenger.inflight_wifi}/5)"})
 
-    if (passenger.departure_delay + passenger.arrival_delay) > 40:
-        top_drivers.append({"factor": "Flight Delay", "sentiment": "negative", "detail": f"Significant flight delay ({int(passenger.departure_delay + passenger.arrival_delay)} mins total)"})
-    elif (passenger.departure_delay + passenger.arrival_delay) == 0:
-        top_drivers.append({"factor": "Punctuality", "sentiment": "positive", "detail": "Punctual departure and arrival"})
+    total_delays = int(passenger.departure_delay + passenger.arrival_delay)
+    if total_delays > 40:
+        top_drivers.append({"factor": "Flight Delay", "sentiment": "negative", "detail": f"{total_delays} mins total delay"})
+    elif total_delays == 0:
+        top_drivers.append({"factor": "Punctuality", "sentiment": "positive", "detail": "On-time flight"})
 
     if passenger.travel_class.lower() == "business":
-        top_drivers.append({"factor": "Travel Class", "sentiment": "positive", "detail": "Business Class cabin amenities"})
+        top_drivers.append({"factor": "Travel Class", "sentiment": "positive", "detail": "Business Class Cabin"})
+    elif passenger.travel_class.lower() == "economy":
+        top_drivers.append({"factor": "Travel Class", "sentiment": "negative", "detail": "Economy Cabin"})
+
+    # Reason why passenger is satisfied or dissatisfied
+    if is_satisfied:
+        if total_delays > 60:
+            explanation = "Despite the flight delay, the passenger remains SATISFIED because premium service ratings (Online Boarding, Wifi, Seat Comfort) and Cabin Class heavily outweigh the inconvenience."
+        else:
+            explanation = "The passenger is SATISFIED due to high service ratings and smooth flight experience."
+    else:
+        if total_delays > 30:
+            explanation = "The passenger is DISSATISFIED primarily due to flight delays coupled with sub-par in-flight experience."
+        else:
+            explanation = "The passenger is DISSATISFIED due to low ratings in key service touchpoints (Boarding, Wifi, or Amenities)."
     
     return {
         "status": "success",
         "primary_model": chosen_name,
-        "benchmark_accuracy": model_metadata.get(chosen_name, {}).get("accuracy", 96.16),
-        "prediction_label": "Satisfied" if is_satisfied else "Neutral or Dissatisfied",
+        "prediction_label": "SATISFIED" if is_satisfied else "DISSATISFIED",
         "is_satisfied": is_satisfied,
-        "confidence_percentage": round(confidence, 2),
-        "probability_satisfied": round(prob_raw * 100.0, 2),
-        "probability_dissatisfied": round((1.0 - prob_raw) * 100.0, 2),
+        "explanation": explanation,
         "key_drivers": top_drivers,
         "model_comparison": comparison_results
     }
@@ -400,3 +408,4 @@ def predict_satisfaction(passenger: PassengerInput):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
+

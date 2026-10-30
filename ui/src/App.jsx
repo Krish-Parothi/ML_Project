@@ -3,7 +3,7 @@ import './App.css';
 import brainImg from './assets/brain.jpg';
 import { 
   Plane, Sparkles, User, ShieldCheck, Activity, AlertTriangle, 
-  CheckCircle2, Gauge, Wifi, Star, Clock, Compass, HeartPulse, RefreshCw
+  CheckCircle2, Wifi, Star, Clock, Compass, ThumbsUp, ThumbsDown, RefreshCw
 } from 'lucide-react';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
@@ -38,11 +38,9 @@ export default function App() {
   const [passenger, setPassenger] = useState(INITIAL_PASSENGER);
   const [selectedModel, setSelectedModel] = useState('LightGBM');
   const [prediction, setPrediction] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [backendOnline, setBackendOnline] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Check backend health & fetch initial prediction
   useEffect(() => {
     checkHealth();
   }, []);
@@ -54,18 +52,14 @@ export default function App() {
   const checkHealth = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/`);
-      if (res.ok) {
-        setBackendOnline(true);
-      } else {
-        setBackendOnline(false);
-      }
+      if (res.ok) setBackendOnline(true);
+      else setBackendOnline(false);
     } catch {
       setBackendOnline(false);
     }
   };
 
   const runPrediction = async (currentData) => {
-    setLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/predict`, {
         method: 'POST',
@@ -81,15 +75,12 @@ export default function App() {
         throw new Error('Backend error');
       }
     } catch {
-      // Fallback offline simulation if FastAPI server is booting up
       setBackendOnline(false);
       simulateOfflinePrediction(currentData);
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Offline heuristic fallback to guarantee UI always works smoothly
+  // Offline fallback logic
   const simulateOfflinePrediction = (p) => {
     const isBiz = p.travel_class === 'Business';
     const delays = p.departure_delay + p.arrival_delay;
@@ -103,27 +94,38 @@ export default function App() {
     ) / 9;
 
     let score = avgRating * 18 + (isBiz ? 15 : -10) - (delays > 45 ? 18 : 0);
-    score = Math.max(5, Math.min(99.4, score));
     const isSat = score >= 50;
-    const conf = isSat ? score : 100 - score;
+
+    let explanation = '';
+    if (isSat) {
+      if (delays > 60) {
+        explanation = "Despite the flight delay, the passenger remains SATISFIED because premium service ratings (Online Boarding, Wifi, Seat Comfort) and Cabin Class heavily outweigh the delay.";
+      } else {
+        explanation = "The passenger is SATISFIED due to high service ratings and smooth overall flight experience.";
+      }
+    } else {
+      if (delays > 30) {
+        explanation = "The passenger is DISSATISFIED primarily due to flight delays coupled with sub-par in-flight experience.";
+      } else {
+        explanation = "The passenger is DISSATISFIED due to low ratings in key service touchpoints (Boarding, Wifi, or Amenities).";
+      }
+    }
 
     setPrediction({
       primary_model: selectedModel,
-      benchmark_accuracy: selectedModel === 'LightGBM' ? 96.16 : (selectedModel === 'XGBoost' ? 95.97 : 95.17),
-      prediction_label: isSat ? 'Satisfied' : 'Neutral or Dissatisfied',
+      prediction_label: isSat ? 'SATISFIED' : 'DISSATISFIED',
       is_satisfied: isSat,
-      confidence_percentage: Number(conf.toFixed(2)),
-      probability_satisfied: Number(score.toFixed(2)),
-      probability_dissatisfied: Number((100 - score).toFixed(2)),
+      explanation: explanation,
       key_drivers: [
         { factor: 'Online Boarding', sentiment: p.online_boarding >= 4 ? 'positive' : 'negative', detail: `Rating: ${p.online_boarding}/5` },
         { factor: 'In-flight Wifi', sentiment: p.inflight_wifi >= 4 ? 'positive' : 'negative', detail: `Rating: ${p.inflight_wifi}/5` },
+        { factor: 'Flight Delay', sentiment: delays > 40 ? 'negative' : 'positive', detail: `${delays}m total delay` },
         { factor: 'Travel Class', sentiment: isBiz ? 'positive' : 'negative', detail: p.travel_class }
       ],
       model_comparison: {
-        LightGBM: { prediction: isSat ? 'Satisfied' : 'Neutral or Dissatisfied', is_satisfied: isSat, confidence_percent: Number(conf.toFixed(2)), benchmark_accuracy: 96.16 },
-        XGBoost: { prediction: isSat ? 'Satisfied' : 'Neutral or Dissatisfied', is_satisfied: isSat, confidence_percent: Number(Math.max(50, conf - 0.4).toFixed(2)), benchmark_accuracy: 95.97 },
-        'Random Forest': { prediction: isSat ? 'Satisfied' : 'Neutral or Dissatisfied', is_satisfied: isSat, confidence_percent: Number(Math.max(50, conf - 1.1).toFixed(2)), benchmark_accuracy: 95.17 }
+        LightGBM: { prediction: isSat ? 'SATISFIED' : 'DISSATISFIED', is_satisfied: isSat },
+        XGBoost: { prediction: isSat ? 'SATISFIED' : 'DISSATISFIED', is_satisfied: isSat },
+        'Random Forest': { prediction: isSat ? 'SATISFIED' : 'DISSATISFIED', is_satisfied: isSat }
       }
     });
   };
@@ -134,7 +136,6 @@ export default function App() {
     });
   };
 
-  // Presets
   const applyPreset = (type) => {
     if (type === 'satisfied_vip') {
       setPassenger({
@@ -201,23 +202,23 @@ export default function App() {
       <header className="app-header">
         <div className="brand-section">
           <div className="brain-avatar-wrapper">
-            <img src={brainImg} alt="Neural Threat Brain Theme" className="brain-avatar" />
+            <img src={brainImg} alt="Neural Brain" className="brain-avatar" />
           </div>
           <div>
             <div className="brand-title">
               NEURALFLIGHT <span style={{ fontSize: '13px', color: 'var(--neon-cyan)', fontWeight: 600 }}>AI</span>
             </div>
-            <div className="brand-subtitle">Airline Passenger Satisfaction Intelligence Architecture</div>
+            <div className="brand-subtitle">Passenger Satisfaction Classifier (Feature-Based Verdicts)</div>
           </div>
         </div>
 
         <div className="header-status-badge">
           <span className="status-dot" style={{ backgroundColor: backendOnline ? '#10b981' : '#f59e0b' }} />
-          {backendOnline ? 'FastAPI Backend Online (Port 8000)' : 'Client Local AI Engine'}
+          {backendOnline ? 'FastAPI Backend Online (Port 8000)' : 'Local Classifier Active'}
         </div>
       </header>
 
-      {/* ─── Control Bar: Model Select & Test Points ─── */}
+      {/* ─── Control Bar ─── */}
       <div className="controls-bar">
         <div className="presets-container">
           <span className="presets-label">
@@ -238,7 +239,7 @@ export default function App() {
         </div>
 
         <div className="model-selector-container">
-          <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase' }}>Model:</span>
+          <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase' }}>Active Model:</span>
           {['LightGBM', 'XGBoost', 'Random Forest'].map(modelName => (
             <button
               key={modelName}
@@ -246,9 +247,6 @@ export default function App() {
               onClick={() => setSelectedModel(modelName)}
             >
               {modelName}
-              <span style={{ fontSize: '10px', opacity: 0.8 }}>
-                {modelName === 'LightGBM' ? '96.16%' : (modelName === 'XGBoost' ? '95.97%' : '95.17%')}
-              </span>
             </button>
           ))}
         </div>
@@ -263,7 +261,7 @@ export default function App() {
             <div className="card-header">
               <User className="card-icon" size={18} />
               <div className="card-title">Passenger Demographics & Flight Details</div>
-              <div className="card-subtitle">Itinerary & Identity</div>
+              <div className="card-subtitle">Flight Parameters</div>
             </div>
 
             <div className="fields-grid-3" style={{ marginBottom: '16px' }}>
@@ -383,7 +381,7 @@ export default function App() {
             <div className="card-header">
               <Wifi className="card-icon" size={18} />
               <div className="card-title">Digital & Airport Experience (Top Predictors)</div>
-              <div className="card-subtitle">Critical satisfaction drivers</div>
+              <div className="card-subtitle">Ranked #1 & #2 in importance</div>
             </div>
 
             <div className="ratings-grid">
@@ -425,7 +423,7 @@ export default function App() {
             <div className="card-header">
               <Plane className="card-icon" size={18} />
               <div className="card-title">In-Cabin Comfort & Amenities</div>
-              <div className="card-subtitle">1 to 5 Likert Scale</div>
+              <div className="card-subtitle">1 to 5 Stars</div>
             </div>
 
             <div className="ratings-grid">
@@ -473,47 +471,40 @@ export default function App() {
           </div>
         </div>
 
-        {/* Right: Live Neural Prediction Hub */}
+        {/* Right: Clean Prediction Output */}
         <div className="prediction-column">
           {prediction && (
             <>
-              {/* Hero Verdict Card */}
+              {/* Clean Verdict Card */}
               <div className={`hero-verdict-card ${prediction.is_satisfied ? 'verdict-satisfied' : 'verdict-dissatisfied'}`}>
                 <div className="verdict-badge-header">
-                  <Activity size={14} /> Neural Inference Verdict
+                  {prediction.is_satisfied ? <ThumbsUp size={16} /> : <ThumbsDown size={16} />}
+                  <span>Direct Model Verdict</span>
                 </div>
 
-                <div className="verdict-status-title">
-                  {prediction.is_satisfied ? 'PASSENGER SATISFIED / INTERESTED' : 'PASSENGER DISSATISFIED'}
+                <div className="verdict-status-title" style={{ fontSize: '32px', margin: '20px 0' }}>
+                  {prediction.is_satisfied ? 'PASSENGER IS SATISFIED' : 'PASSENGER IS DISSATISFIED'}
                 </div>
 
-                {/* Confidence Progress Meter */}
-                <div className="confidence-meter-container">
-                  <div className="confidence-header">
-                    <span>Confidence Score</span>
-                    <span style={{ color: prediction.is_satisfied ? '#34d399' : '#f87171', fontWeight: 800 }}>
-                      {prediction.confidence_percentage}%
-                    </span>
-                  </div>
-                  <div className="confidence-progress-track">
-                    <div 
-                      className={`confidence-progress-fill ${prediction.is_satisfied ? 'fill-satisfied' : 'fill-dissatisfied'}`}
-                      style={{ width: `${prediction.confidence_percentage}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="model-benchmark-badge">
-                  <ShieldCheck size={14} />
-                  <span>Tested with {selectedModel} (Benchmark: {prediction.benchmark_accuracy}% Acc)</span>
+                {/* Plain-English Feature Reason */}
+                <div style={{
+                  background: 'rgba(0, 0, 0, 0.35)',
+                  padding: '14px',
+                  borderRadius: '12px',
+                  fontSize: '13px',
+                  lineHeight: '1.5',
+                  color: '#e2e8f0',
+                  border: '1px solid rgba(255, 255, 255, 0.08)'
+                }}>
+                  {prediction.explanation}
                 </div>
               </div>
 
-              {/* Cross-Model Consensus Card */}
+              {/* Cross-Model Consensus (Pure Verdicts) */}
               <div className="consensus-card">
                 <div className="consensus-header">
-                  <span>Cross-Model Consensus Matrix</span>
-                  <span style={{ fontSize: '11px', color: 'var(--neon-cyan)', fontWeight: 600 }}>3 Models Evaluated</span>
+                  <span>Model Consensus Comparison</span>
+                  <span style={{ fontSize: '11px', color: 'var(--neon-cyan)', fontWeight: 600 }}>Pure Verdicts</span>
                 </div>
 
                 <div className="consensus-models-list">
@@ -521,23 +512,21 @@ export default function App() {
                     <div key={mName} className="consensus-item">
                       <div className="consensus-model-info">
                         <span className="consensus-model-name">{mName}</span>
-                        <span className="consensus-model-acc">Benchmark: {res.benchmark_accuracy}%</span>
                       </div>
                       <div className="consensus-vote">
-                        <span className={`vote-badge ${res.is_satisfied ? 'vote-satisfied' : 'vote-dissatisfied'}`}>
-                          {res.is_satisfied ? 'Satisfied' : 'Dissatisfied'}
+                        <span className={`vote-badge ${res.is_satisfied ? 'vote-satisfied' : 'vote-dissatisfied'}`} style={{ fontSize: '13px', padding: '6px 14px' }}>
+                          {res.prediction}
                         </span>
-                        <span className="vote-confidence">{res.confidence_percent}%</span>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Key Impact Drivers */}
+              {/* Key Contributing Feature Badges */}
               <div className="drivers-card">
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Compass size={15} color="var(--neon-cyan)" /> Key Decision Drivers for This Passenger
+                  <Compass size={15} color="var(--neon-cyan)" /> Key Features Driving This Verdict
                 </div>
 
                 <div className="drivers-list">
@@ -547,26 +536,10 @@ export default function App() {
                       className={`driver-pill ${driver.sentiment === 'positive' ? 'driver-positive' : 'driver-negative'}`}
                     >
                       <span style={{ fontWeight: 600 }}>{driver.factor}</span>
-                      <span style={{ fontSize: '11px', opacity: 0.85 }}>{driver.detail}</span>
+                      <span style={{ fontSize: '12px', opacity: 0.9 }}>{driver.detail}</span>
                     </div>
                   ))}
                 </div>
-              </div>
-
-              {/* Recommended Airline Action */}
-              <div className="action-card">
-                <div className="action-card-header">
-                  <HeartPulse size={14} /> Recommended Airline Intervention
-                </div>
-                {prediction.is_satisfied ? (
-                  <div>
-                    High retention probability. Passenger loyalty intact. Suitable for loyalty tier promotions and premium upgrade offers.
-                  </div>
-                ) : (
-                  <div>
-                    <strong>High Churn Risk Detected!</strong> Trigger proactive service recovery: Dispatch automated 5,000 frequent flyer miles voucher and prioritize boarding on return leg.
-                  </div>
-                )}
               </div>
             </>
           )}
@@ -576,7 +549,7 @@ export default function App() {
   );
 }
 
-// ─── Sub-component: 1-5 Star / Chip Selector ───
+// ─── Sub-component: 1-5 Star Selector ───
 function RatingSelector({ label, value, onChange }) {
   return (
     <div className="rating-item">
